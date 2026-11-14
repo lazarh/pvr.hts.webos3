@@ -1,0 +1,90 @@
+name: build-pvr-hts-webos
+
+on:
+  workflow_dispatch:
+    inputs:
+      kodi_ref:
+        description: "xbmc/xbmc branch, tag or commit to build against (empty = pinned default)"
+        required: false
+        type: string
+      sdk_tag:
+        description: "openlgtv/buildroot-nc4 release tag for the webOS SDK"
+        required: false
+        type: string
+        default: "2026.08-webos"
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Cross-compile pvr.hts for webOS ARMv7
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /usr/local/share/boost \
+            /usr/share/swift \
+            /opt/hostedtoolcache/CodeQL || true
+          df -h /
+
+      - name: Restore webOS SDK cache
+        uses: actions/cache@v4
+        with:
+          path: build/toolchain
+          key: webos-sdk-${{ inputs.sdk_tag || '2026.08-webos' }}
+
+      - name: Restore download cache
+        uses: actions/cache@v4
+        with:
+          path: build/tarballs
+          key: kodi-dep-tarballs-v1
+          restore-keys: |
+            kodi-dep-tarballs-
+
+      - name: Validate scripts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends shellcheck
+          bash -n build.sh
+          shellcheck build.sh
+          python3 -c "import yaml; yaml.safe_load(open('.github/workflows/build.yml'))"
+          echo "build.sh and workflow are valid"
+
+      - name: Build add-on
+        env:
+          KODI_REF: ${{ inputs.kodi_ref }}
+          SDK_TAG: ${{ inputs.sdk_tag || '2026.08-webos' }}
+        run: ./build.sh
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pvr.hts-webos-armv7
+          path: dist/pvr.hts-webos-armv7.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach zip to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/pvr.hts-webos-armv7.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
