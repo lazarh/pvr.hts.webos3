@@ -1,4 +1,4 @@
-# kodi-webos-pvr-hts
+# pvr.hts.webos3
 
 Cross-compiles the **Kodi `pvr.hts` (Tvheadend HTSP client) binary add-on** for
 **LG webOS on 32-bit ARM (ARMv7)**, for Kodi webOS builds with
@@ -49,8 +49,8 @@ build, the version checks Kodi performs at install time pass.
 ## Local build
 
 ```bash
-git clone https://github.com/lazarh/kodi-webos-pvr-hts.git
-cd kodi-webos-pvr-hts
+git clone https://github.com/lazarh/pvr.hts.webos3.git
+cd pvr.hts.webos3
 ./build.sh
 ```
 
